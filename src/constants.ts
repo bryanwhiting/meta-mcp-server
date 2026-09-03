@@ -1,4 +1,4 @@
-export const GRAPH_API_VERSION = "v21.0";
+export const GRAPH_API_VERSION = "v26.0";
 export const GRAPH_API_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
 export const CHARACTER_LIMIT = 25000;
 

@@ -12,7 +12,7 @@
 <p align="center">
   <code>200 tools</code> &bull;
   <code>7 platforms</code> &bull;
-  <code>Graph API v21.0</code>
+  <code>Graph API v26.0</code>
 </p>
 
 <p align="center">
@@ -653,7 +653,7 @@ src/
 
 ### Key Design Decisions
 
-- **Dual API client** — Handles both `graph.facebook.com/v21.0` and `graph.threads.net/v1.0` with separate base URLs and tokens
+- **Dual API client** — Handles both `graph.facebook.com/v26.0` and `graph.threads.net/v1.0` with separate base URLs and tokens
 - **Page token caching** — `meta_list_pages` caches page-scoped tokens; subsequent tools look them up by page ID
 - **Two-step container publishing** — Instagram and Threads require container → publish flow; the server handles this automatically with video processing polling
 - **Parallel carousel processing** — All carousel items created concurrently via `Promise.allSettled`; partial failures report which items succeeded
@@ -666,7 +666,7 @@ src/
 
 ## API Coverage
 
-Targets **Meta Graph API v21.0** and **Threads API v1.0**.
+Targets **Meta Graph API v26.0** and **Threads API v1.0**.
 
 | API | Status |
 |:---|:---|

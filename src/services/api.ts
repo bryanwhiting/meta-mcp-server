@@ -1,6 +1,48 @@
 import axios, { AxiosError } from "axios";
 import { GRAPH_API_BASE, THREADS_API_BASE } from "../constants.js";
 
+function removeAccessTokenFromUrl(value: string): string {
+  try {
+    const url = new URL(value);
+    url.searchParams.delete("access_token");
+    return url.toString();
+  } catch {
+    return value
+      .replace(/([?&])access_token=[^&]*(&?)/gi, (_match, separator, followingSeparator) =>
+        followingSeparator ? separator : ""
+      )
+      .replace(/\?&/, "?")
+      .replace(/[?&]$/, "");
+  }
+}
+
+/**
+ * Meta includes the request access token in pagination URLs. Remove it before
+ * tool handlers can serialize API responses, while preserving page-token
+ * fields that handlers need internally for their in-memory cache.
+ */
+export function sanitizePaginationUrls<T>(value: T): T {
+  const visit = (current: unknown, insidePaging = false): void => {
+    if (Array.isArray(current)) {
+      for (const item of current) visit(item, insidePaging);
+      return;
+    }
+    if (!current || typeof current !== "object") return;
+
+    const record = current as Record<string, unknown>;
+    for (const [key, child] of Object.entries(record)) {
+      if (insidePaging && (key === "next" || key === "previous") && typeof child === "string") {
+        record[key] = removeAccessTokenFromUrl(child);
+      } else {
+        visit(child, key === "paging");
+      }
+    }
+  };
+
+  visit(value);
+  return value;
+}
+
 export class MetaApiClient {
   private readonly userToken: string;
   private readonly threadsToken: string | undefined;
@@ -27,7 +69,7 @@ export class MetaApiClient {
       params: { access_token: this.userToken, ...params },
       timeout: 30000,
     });
-    return response.data as T;
+    return sanitizePaginationUrls(response.data as T);
   }
 
   async getWithToken<T>(
@@ -39,7 +81,7 @@ export class MetaApiClient {
       params: { access_token: token, ...params },
       timeout: 30000,
     });
-    return response.data as T;
+    return sanitizePaginationUrls(response.data as T);
   }
 
   async post<T>(
@@ -62,7 +104,7 @@ export class MetaApiClient {
       timeout: 30000,
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
     });
-    return response.data as T;
+    return sanitizePaginationUrls(response.data as T);
   }
 
   async delete<T>(
@@ -75,7 +117,7 @@ export class MetaApiClient {
       params: { access_token: token ?? this.userToken, ...params },
       timeout: 30000,
     });
-    return response.data as T;
+    return sanitizePaginationUrls(response.data as T);
   }
 
   // Page token management
@@ -127,7 +169,7 @@ export class MetaApiClient {
       params: { access_token: token, ...params },
       timeout: 30000,
     });
-    return response.data as T;
+    return sanitizePaginationUrls(response.data as T);
   }
 
   async threadsPost<T>(path: string, fields: Record<string, unknown> = {}): Promise<T> {
@@ -146,7 +188,7 @@ export class MetaApiClient {
       timeout: 30000,
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
     });
-    return response.data as T;
+    return sanitizePaginationUrls(response.data as T);
   }
 
   async threadsDelete<T>(path: string): Promise<T> {
@@ -155,7 +197,7 @@ export class MetaApiClient {
       params: { access_token: token },
       timeout: 30000,
     });
-    return response.data as T;
+    return sanitizePaginationUrls(response.data as T);
   }
 
   /**

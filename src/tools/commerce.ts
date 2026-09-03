@@ -43,6 +43,29 @@ const PRODUCT_LIST_FIELDS = "id,name,description,price,currency,availability,ima
 const PRODUCT_DETAIL_FIELDS = "id,name,description,price,currency,availability,image_url,url,brand,category,retailer_id,sale_price,condition,inventory";
 const PRODUCT_SET_FIELDS = "id,name,filter,product_count";
 
+/**
+ * Meta returns error 3/1798083 for the products edge on some empty generic
+ * catalogs. Avoid that unsupported edge call when the catalog already reports
+ * that it contains no products. Non-empty catalogs continue to use the
+ * documented /products edge.
+ */
+export async function fetchCatalogProducts(
+  client: MetaApiClient,
+  catalogId: string,
+  params: Record<string, string>
+): Promise<MetaPaginatedResponse<Product>> {
+  const catalog = await client.get<Pick<ProductCatalog, "id" | "product_count" | "vertical">>(
+    `/${catalogId}`,
+    { fields: "id,product_count,vertical" }
+  );
+
+  if (catalog.product_count === 0) {
+    return { data: [] };
+  }
+
+  return client.get<MetaPaginatedResponse<Product>>(`/${catalogId}/products`, params);
+}
+
 export function registerCommerceTools(server: McpServer, client: MetaApiClient): void {
   // ─── List Product Catalogs ────────────────────────────────────────────────
   server.registerTool(
@@ -194,10 +217,7 @@ Returns product IDs, names, prices, availability, and more.`,
         if (after) params.after = after;
         if (filter) params.filter = JSON.stringify(filter);
 
-        const data = await client.get<MetaPaginatedResponse<Product>>(
-          `/${catalog_id}/products`,
-          params
-        );
+        const data = await fetchCatalogProducts(client, catalog_id, params);
 
         if (!data.data?.length) {
           return { content: [{ type: "text", text: "No products found." }] };

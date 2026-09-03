@@ -50,7 +50,7 @@ For create/update endpoints, include `fields` parameter to get data back immedia
 Subscribe to notifications about changes to nodes. See Webhooks documentation.
 
 ## Versions
-Quarterly releases. Specify version in path: `https://graph.facebook.com/v21.0/...`
+Quarterly releases. Specify version in path: `https://graph.facebook.com/v26.0/...`
 
 ## Related Documentation
 - [Get Started](https://developers.facebook.com/docs/graph-api/get-started)

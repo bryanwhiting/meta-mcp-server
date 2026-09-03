@@ -206,6 +206,7 @@ Args:
   - lifetime_budget (number, optional): Lifetime budget in cents (requires stop_time)
   - stop_time (string, optional): ISO 8601 end date (required for lifetime budget)
   - special_ad_categories (string[], optional): Required for housing, employment, credit ads
+  - is_adset_budget_sharing_enabled (boolean): Required by Graph API v26 for campaigns without a campaign-level budget (default false)
 
 Note: For OUTCOME_SALES objective, Advantage+ Shopping campaigns are available. These use Meta's AI to optimize targeting and placements automatically. Create a standard campaign first, then use meta_migrate_campaign_to_advantage_plus to convert it.
 
@@ -230,8 +231,12 @@ Returns the new campaign ID.`,
           stop_time: z.string().optional().describe("End datetime ISO 8601 (required with lifetime_budget)"),
           special_ad_categories: z
             .array(z.enum(["HOUSING", "EMPLOYMENT", "CREDIT", "ISSUES_ELECTIONS_POLITICS", "NONE"]))
-            .default(["NONE"])
+            .default([])
             .describe("Special ad category compliance"),
+          is_adset_budget_sharing_enabled: z
+            .boolean()
+            .default(false)
+            .describe("Allow ad sets to share part of their budgets (default false)"),
           response_format: ResponseFormatSchema,
         })
         .strict(),
@@ -242,13 +247,14 @@ Returns the new campaign ID.`,
         openWorldHint: false,
       },
     },
-    async ({ ad_account_id, name, objective, status, daily_budget, lifetime_budget, stop_time, special_ad_categories, response_format }) => {
+    async ({ ad_account_id, name, objective, status, daily_budget, lifetime_budget, stop_time, special_ad_categories, is_adset_budget_sharing_enabled, response_format }) => {
       try {
         const fields: Record<string, unknown> = {
           name,
           objective,
           status,
           special_ad_categories,
+          is_adset_budget_sharing_enabled,
         };
         if (daily_budget) fields.daily_budget = daily_budget;
         if (lifetime_budget) fields.lifetime_budget = lifetime_budget;

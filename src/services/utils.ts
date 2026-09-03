@@ -46,6 +46,8 @@ export function handleApiError(error: unknown): string {
         const code = metaError.code;
         const msg = metaError.message ?? metaError.error_user_msg;
         const subcode = metaError.error_subcode;
+        const userTitle = metaError.error_user_title;
+        const userMessage = metaError.error_user_msg;
 
         // Provide actionable guidance for common error codes
         if (code === 190) {
@@ -62,7 +64,10 @@ export function handleApiError(error: unknown): string {
           );
         }
 
-        return `Error (${code}${subcode ? `/${subcode}` : ""}): ${msg}`;
+        const guidance = [userTitle, userMessage]
+          .filter((value): value is string => typeof value === "string" && value.length > 0)
+          .join(": ");
+        return `Error (${code}${subcode ? `/${subcode}` : ""}): ${msg}${guidance ? `\n\n${guidance}` : ""}`;
       }
       switch (error.response.status) {
         case 400:

@@ -54,8 +54,9 @@ Tip: The page tokens are cached automatically. You do not need to manage them ma
         }
 
         if (response_format === "json") {
+          const publicPages = data.data.map(({ access_token: _accessToken, ...page }) => page);
           return {
-            content: [{ type: "text", text: JSON.stringify(data.data, null, 2) }],
+            content: [{ type: "text", text: JSON.stringify(publicPages, null, 2) }],
           };
         }
 
@@ -117,7 +118,8 @@ Returns page details including name, category, description, follower counts, and
         }
 
         if (response_format === "json") {
-          return { content: [{ type: "text", text: JSON.stringify(page, null, 2) }] };
+          const { access_token: _accessToken, ...publicPage } = page;
+          return { content: [{ type: "text", text: JSON.stringify(publicPage, null, 2) }] };
         }
 
         const lines = [

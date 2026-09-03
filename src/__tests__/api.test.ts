@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { MetaApiClient } from "../services/api.js";
+import { MetaApiClient, sanitizePaginationUrls } from "../services/api.js";
 import { handleApiError, errorResult, formatCurrency, formatBudget, formatDate, formatNumber, truncate, buildPaginationNote } from "../services/utils.js";
 import { AxiosError } from "axios";
-import { CHARACTER_LIMIT, GRAPH_API_BASE, THREADS_API_BASE } from "../constants.js";
+import { CHARACTER_LIMIT, GRAPH_API_BASE, GRAPH_API_VERSION, THREADS_API_BASE } from "../constants.js";
 
 describe("MetaApiClient", () => {
   describe("token validation", () => {
@@ -106,7 +106,46 @@ describe("MetaApiClient", () => {
   });
 });
 
+describe("sanitizePaginationUrls", () => {
+  it("removes access tokens from pagination URLs", () => {
+    const data = {
+      data: [{ id: "1" }],
+      paging: {
+        next: "https://graph.facebook.com/v24.0/items?access_token=secret&after=cursor",
+        previous: "https://graph.facebook.com/v24.0/items?before=cursor&access_token=secret",
+      },
+    };
+
+    sanitizePaginationUrls(data);
+
+    expect(data.paging.next).toBe("https://graph.facebook.com/v24.0/items?after=cursor");
+    expect(data.paging.previous).toBe("https://graph.facebook.com/v24.0/items?before=cursor");
+  });
+
+  it("preserves non-pagination access-token fields used for page caching", () => {
+    const data = { data: [{ id: "1", access_token: "page-token" }] };
+
+    sanitizePaginationUrls(data);
+
+    expect(data.data[0].access_token).toBe("page-token");
+  });
+
+  it("removes tokens from relative pagination URLs", () => {
+    const data = {
+      paging: { next: "/items?before=one&access_token=secret&after=two" },
+    };
+
+    sanitizePaginationUrls(data);
+
+    expect(data.paging.next).toBe("/items?before=one&after=two");
+  });
+});
+
 describe("constants", () => {
+  it("targets Graph API v26", () => {
+    expect(GRAPH_API_VERSION).toBe("v26.0");
+  });
+
   it("GRAPH_API_BASE uses https", () => {
     expect(GRAPH_API_BASE).toMatch(/^https:\/\/graph\.facebook\.com\/v\d+\.\d+$/);
   });
@@ -150,6 +189,27 @@ describe("handleApiError", () => {
     const result = handleApiError(error);
     expect(result).toContain("Missing permission");
     expect(result).toContain("developers.facebook.com/tools/explorer");
+  });
+
+  it("includes Meta's detailed user guidance for validation errors", () => {
+    const error = new AxiosError("Request failed");
+    (error as any).response = {
+      status: 400,
+      data: {
+        error: {
+          code: 100,
+          error_subcode: 4834011,
+          message: "Invalid parameter",
+          error_user_title: "A required field is missing",
+          error_user_msg: "Set the required field to true or false.",
+        },
+      },
+    };
+
+    const result = handleApiError(error);
+    expect(result).toContain("100/4834011");
+    expect(result).toContain("A required field is missing");
+    expect(result).toContain("Set the required field to true or false.");
   });
 
   it("handles 401 without Meta error body", () => {
